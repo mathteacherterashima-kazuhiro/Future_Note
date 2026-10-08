@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>未来ノート - ミライを育てる目標管理アプリ</title>
+    
+    <!-- PWA 用設定 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    
+    <!-- iOS (Safari) 用 PWA 設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="未来ノート">
+    <link rel="apple-touch-icon" href="icon.png">
+
+    <!-- 紙吹雪エフェクト用ライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        :root {
+            --app-bg: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            --card-bg: rgba(255, 255, 255, 0.92);
+            --text-main: #262626;
+            --text-secondary: #8e8e8e;
+            --insta-pink: #fd1d1d;
+            --insta-purple: #833ab4;
+            --insta-orange: #fcb045;
+            --insta-gradient: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+            --border-color: #dbdbdb;
+            --shadow: 0 4px 20px rgba(0,0,0,0.06);
+            --radius: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: var(--app-bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            transition: background 0.5s ease;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 430px;
+            height: 100vh;
+            height: 100dvh;
+            max-height: 932px;
+            background: #fafafa;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        @media (min-width: 431px) {
+            .app-container {
+                height: 88vh;
+                border-radius: 36px;
+                border: 8px solid #333;
+            }
+        }
+
+        /* ヘッダー */
+        .app-header {
+            background: #ffffff;
+            padding: 12px 16px;
+            padding-top: calc(12px + env(safe-area-inset-top));
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            z-index: 10;
+        }
+
+        .app-logo {
+            font-weight: 800;
+            font-size: 1.1rem;
+            background: var(--insta-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .header-points {
+            display: flex;
+            gap: 10px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .point-badge {
+            background: #fff0f3;
+            color: #d6249f;
+            padding: 4px 8px;
+            border-radius: 20px;
+            border: 1px solid rgba(214, 36, 159, 0.2);
+        }
+
+        .point-badge.long {
+            background: #eef2ff;
+            color: #285AEB;
+            border-color: rgba(40, 90, 235, 0.2);
+        }
+
+        /* メインコンテンツ領域 */
+        .app-content {
+            flex: 1;
+            overflow-y: auto;
+            position: relative;
+            padding-bottom: calc(70px + env(safe-area-inset-bottom));
+        }
+
+        .screen {
+            display: none;
+            padding: 16px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ストーリー風ハイライト・フィードトレイ */
+        .stories-container {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 4px 0 12px 0;
+            scrollbar-width: none;
+        }
+        .stories-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .story-ring-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .story-ring-outer {
+            width: 62px;
+            height: 62px;
+            border-radius: 50%;
+            background: var(--insta-gradient);
+            padding: 2.5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .story-ring-inner {
+            width: 57px;
+            height: 57px;
+            background: #fff;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.4rem;
+        }
+
+        .story-ring-name {
+            font-size: 0.65rem;
+            margin-top: 4px;
+            color: var(--text-main);
+            width: 64px;
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* カードデザイン */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        }
+
+        /* パートナーウィジェット */
+        .partner-display {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 12px;
+        }
+
+        .partner-avatar-large {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid #fd1d1d;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            box-shadow: 0 4px 12px rgba(253, 29, 29, 0.2);
+            animation: bounce 2s infinite ease-in-out;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+
+        .partner-info h3 {
+            font-size: 0.95rem;
+            margin-bottom: 2px;
+        }
+
+        .partner-info p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* ミニマリストアクションボタン */
+        .minimal-action-box {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .minimal-action-text {
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        /* フォーム部品 */
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: var(--text-main);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 0.85rem;
+            background: #fff;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--insta-purple);
+        }
+
+        .btn {
+            width: 100%;
+            background: var(--insta-gradient);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(220, 39, 67, 0.3);
+            transition: opacity 0.2s;
+        }
+
+        .btn:active {
+            opacity: 0.9;
+            transform: scale(0.98);
+        }
+
+        /* 目標一覧タブ・リスト */
+        .tab-container {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 14px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            background: none;
+            border: none;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: var(--text-secondary);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .tab-btn.active {
+            color: var(--text-main);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--text-main);
+        }
+
+        .task-list {
+            list-style: none;
+        }
+
+        .task-item {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .task-item.completed {
+            opacity: 0.5;
+            background: #f1f1f1;
+        }
+
+        .task-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .task-checkbox {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--insta-purple);
+            cursor: pointer;
+        }
+
+        .task-text {
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .badge-short {
+            background: #fff0f3;
+            color: var(--insta-pink);
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .badge-long {
+            background: #eef2ff;
+            color: #285AEB;
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+            opacity: 0.6;
+        }
+
+        /* 成長図鑑グリッド */
+        .garden-section {
+            margin-bottom: 20px;
+        }
+
+        .dex-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .dex-item {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .dex-item.selected {
+            border: 2px solid var(--insta-pink);
+            background: #fff9fa;
+        }
+
+        .dex-ring {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 8px auto;
+            border-radius: 50%;
+            background: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+        }
+
+        .locked-badge {
+            font-size: 0.6rem;
+            background: #e0e0e0;
+            color: #666;
+            padding: 2px 6px;
+            border-radius: 10px;
+            display: inline-block;
+            margin-top: 4px;
+        }
+
+        /* ショップグリッド */
+        .shop-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .shop-item {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .shop-item-preview {
+            width: 100%;
+            height: 60px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            color: #fff;
+        }
+
+        /* フッターナビゲーション */
+        .nav-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: calc(60px + env(safe-area-inset-bottom));
+            padding-bottom: env(safe-area-inset-bottom);
+            background: #ffffff;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .nav-item {
+            background: none;
+            border: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 0.6rem;
+            gap: 2px;
+        }
+
+        .nav-item.active {
+            color: var(--insta-pink);
+            font-weight: bold;
+        }
+
+        .nav-item .icon {
+            font-size: 1.2rem;
+        }
+
+        /* ストーリービュワーモーダル */
+        .story-viewer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: calc(20px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));
+            color: #fff;
+        }
+
+        .story-viewer.active {
+            display: flex;
+        }
+
+        .story-progress-bar {
+            width: 100%;
+            height: 3px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .story-progress-fill {
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            transform-origin: left;
+            transform: scaleX(0);
+        }
+
+        .story-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .story-user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .story-content-box {
+            text-align: center;
+            margin: auto;
+        }
+
+        .story-big-icon {
+            font-size: 5rem;
+            margin-bottom: 16px;
+            animation: bounce 2s infinite ease-in-out;
+        }
+
+        /* ポップアップ通知 */
+        .celebration-popup {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 14px 24px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .celebration-popup.active {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* 画面フラッシュエフェクト */
+        .flash-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.6);
+            z-index: 150;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .flash-overlay.active {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- 画面フラッシュ & ポップアップ -->
+        <div class="flash-overlay" id="flashOverlay"></div>
+        <div class="celebration-popup" id="celebrationPopup">✨ 達成おめでとうございます！</div>
+
+        <!-- ヘッダー -->
+        <header class="app-header">
+            <div class="app-logo">
+                <span>🌱</span> 未来ノート
+            </div>
+            <div class="header-points">
+                <div class="point-badge" onclick="switchScreen('shop', null)" style="cursor:pointer;" title="短期ショップへ">短期: <span id="headerShortPoints">120</span>pt</div>
+                <div class="point-badge long" onclick="switchScreen('shop', null)" style="cursor:pointer;" title="長期ショップへ">長期: <span id="headerLongPoints">80</span>pt</div>
+            </div>
+        </header>
+
+        <!-- メインコンテンツ -->
+        <main class="app-content">
+
+            <!-- 1. ホーム画面 -->
+            <div id="screen-home" class="screen active">
+                <div class="stories-container" id="storiesTray"></div>
+
+                <div class="card">
+                    <div class="partner-display">
+                        <div class="partner-avatar-large" id="homeShortIcon">🐥</div>
+                        <div class="partner-info">
+                            <span class="badge-short">短期パートナー</span>
+                            <h3 id="homeShortName" style="margin-top:2px;">ひよこ</h3>
+                            <p>目標をクリアして一緒に成長しよう！</p>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px;">残りタスク: <span id="remainingCount" style="font-weight:bold; color:var(--text-main);">2</span>件</div>
+                    <div id="recommendContainer"></div>
+                </div>
+
+                <div class="card" style="background: linear-gradient(135deg, #f8f9ff 0%, #eef2ff 100%);">
+                    <div class="partner-display">
+                        <div class="partner-avatar-large" id="homeLongIcon" style="border-color: #285AEB;">👶</div>
+                        <div class="partner-info">
+                            <span class="badge-long">長期パートナー（未来の姿）</span>
+                            <h3 id="homeLongName" style="margin-top:2px;">赤ちゃん</h3>
+                            <p>大きな夢や習慣の継続で大人の姿へ進化！</p>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.72rem; color: #285AEB; font-weight: bold; text-align: right;">🔥 連続達成ストリーク: <span id="streakCount">5</span>日</div>
+                </div>
+            </div>
+
+            <!-- フィードストーリービュワーモーダル -->
+            <div class="story-viewer" id="feedStoryViewer">
+                <div>
+                    <div class="story-progress-bar"><div class="story-progress-fill" id="feedBarFill"></div></div>
+                    <div class="story-header">
+                        <div class="story-user-info">
+                            <span id="feedUserAvatar" style="font-size: 1.2rem;">👧</span>
+                            <span id="feedUserName">りこ</span>
+                        </div>
+                        <span style="font-size: 0.75rem; opacity: 0.7;" onclick="closeFeedStory()">✕ 閉じる</span>
+                    </div>
+                </div>
+                <div class="story-content-box">
+                    <div style="font-size: 0.7rem; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; display: inline-block; margin-bottom: 12px;" id="feedCategoryLabel">進路・テスト</div>
+                    <div style="font-size: 1.1rem; font-weight: bold; margin-bottom: 16px;" id="feedStoryTitle">英検2級合格する！</div>
+                    <div id="feedStoryTypeBadge" class="badge-short" style="display:inline-block; font-size:0.75rem; padding:4px 10px;">短期目標</div>
+                </div>
+                <div>
+                    <button class="btn" style="background: rgba(255,255,255,0.3); backdrop-filter: blur(5px);" onclick="sendReaction()">応援のハートを送る ❤️</button>
+                </div>
+            </div>
+
+            <!-- ストーリー風図鑑プレビューモーダル -->
+            <div class="story-viewer" id="storyViewer">
+                <div>
+                    <div class="story-progress-bar"><div class="story-progress-fill" id="storyBarFill"></div></div>
+                    <div class="story-header">
+                        <div class="story-user-info">
+                            <span id="storyHeaderIcon" style="font-size: 1.2rem;">🥚</span>
+                            <span id="storyTypeName">短期パートナー</span>
+                        </div>
+                        <span style="font-size: 0.75rem; opacity: 0.7;" onclick="closeStory()">✕ 閉じる</span>
+                    </div>
+                </div>
+                <div class="story-content-box">
+                    <div class="story-big-icon" id="storyPopupIcon">🐥</div>
+                    <h2 id="storyPopupName" style="font-size: 1.2rem; margin-bottom: 8px;">ひよこ</h2>
+                    <p id="storyPopupDesc" style="font-size: 0.8rem; opacity: 0.9; padding: 0 20px; line-height: 1.4;">ヨチヨチ歩きで一歩前進！</p>
+                </div>
+                <div>
+                    <button class="btn" id="storyConfirmBtn" onclick="confirmSelectStory()">この姿にする ✨</button>
+                </div>
+            </div>
+
+            <!-- 2. 追加画面 -->
+            <div id="screen-add" class="screen">
+                <div class="card">
+                    <h2>🎯 新しい目標の追加</h2>
+                    <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 16px;">短期目標や未来の長期目標を設定しよう！</p>
+                    
+                    <form id="storyTaskForm">
+                        <div class="form-group">
+                            <label for="modalTaskType">目標タイプ</label>
+                            <select id="modalTaskType" class="form-control">
+                                <option value="short">短期目標（ポイント＋15pt & パートナー育成）</option>
+                                <option value="long">長期目標（ポイント＋30pt & 未来へ前進）</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="modalTaskCategory">カテゴリー</label>
+                            <select id="modalTaskCategory" class="form-control">
+                                <option value="進路・テスト">進路・テスト</option>
+                                <option value="学習・スキル">学習・スキル</option>
+                                <option value="生活・習慣">生活・習慣</option>
+                                <option value="将来の夢">将来の夢</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="modalTaskInput">内容</label>
+                            <input type="text" id="modalTaskInput" class="form-control" placeholder="例: 英単語を50個覚える" required>
+                        </div>
+                        <button type="submit" class="btn">投稿・追加する 📸</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="celebration-popup" id="addPopup" style="top: 50%;">目標を追加しました！✨</div>
+
+            <!-- 3. 一覧画面 -->
+            <div id="screen-list" class="screen">
+                <div class="tab-container">
+                    <button class="tab-btn active" onclick="switchListTab('all')">すべて</button>
+                    <button class="tab-btn" onclick="switchListTab('short')">短期目標</button>
+                    <button class="tab-btn" onclick="switchListTab('long')">長期目標</button>
+                </div>
+
+                <ul class="task-list" id="taskList"></ul>
+            </div>
+
+            <!-- 4. 成長図鑑画面 -->
+            <div id="screen-garden" class="screen">
+                <div class="garden-section">
+                    <div style="font-size: 0.8rem; font-weight: bold; margin-bottom: 4px;">🐣 短期パートナー図鑑</div>
+                    <p style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 10px;">短期目標ポイントを貯めて進化させよう！</p>
+                    <div class="dex-grid" id="shortDexGrid"></div>
+                </div>
+
+                <div class="garden-section">
+                    <div style="font-size: 0.8rem; font-weight: bold; margin-bottom: 4px;">👶 長期パートナー図鑑</div>
+                    <p style="font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 10px;">長期目標ポイントを貯めて進化させよう！</p>
+                    <div class="dex-grid" id="longDexGrid"></div>
+                </div>
+            </div>
+
+            <!-- 5. ショップ画面 -->
+            <div id="screen-shop" class="screen">
+                <div class="card">
+                    <h2>🎨 きせかえ・エフェクトショップ</h2>
+                    <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 16px;">ポイントで特別な背景やエフェクトを解放しよう！</p>
+                    <div class="shop-grid" id="shopGrid"></div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- フッターナビゲーション -->
+        <nav class="nav-bar">
+            <button class="nav-item active" onclick="switchScreen('home', this)">
+                <span class="icon">🏠</span>
+                <span>ホーム</span>
+            </button>
+            <button class="nav-item" onclick="switchScreen('add', this)">
+                <span class="icon">➕</span>
+                <span>追加</span>
+            </button>
+            <button class="nav-item" onclick="switchScreen('list', this)">
+                <span class="icon">📝</span>
+                <span>目標一覧</span>
+            </button>
+            <button class="nav-item" onclick="switchScreen('garden', this)">
+                <span class="icon">📖</span>
+                <span>図鑑</span>
+            </button>
+            <button class="nav-item" onclick="switchScreen('shop', this)">
+                <span class="icon">🛍️</span>
+                <span>ショップ</span>
+            </button>
+        </nav>
+    </div>
+
+    <script>
+        // Service Workerの登録
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker 登録成功:', reg.scope))
+                    .catch(err => console.error('Service Worker 登録失敗:', err));
+            });
+        }
+
+        // データ構造
+        let appData = {
+            shortPoints: 150,
+            longPoints: 80,
+            streak: 5,
+            currentShortId: 'short_1',
+            currentLongId: 'long_1',
+            tasks: [
+                { id: 1, title: '英単語マスター50個', type: 'short', completed: false, category: '学習・スキル' },
+                { id: 2, title: '数学の復習プリント', type: 'short', completed: true, category: '進路・テスト' },
+                { id: 3, title: '志望校のオープンキャンパス参加', type: 'long', completed: false, category: '進路・テスト' },
+                { id: 4, title: '毎日23時に寝る生活習慣', type: 'short', completed: false, category: '生活・習慣' }
+            ],
+            unlockedShort: ['short_1', 'short_2'],
+            unlockedLong: ['long_1'],
+            unlockedShop: ['shop_1']
+        };
+
+        const shortPartners = [
+            { id: 'short_1', name: 'タマゴ', icon: '🥚', cost: 0, desc: 'ここからすべてが始まる！' },
+            { id: 'short_2', name: 'ひよこ', icon: '🐥', cost: 50, desc: 'ヨチヨチ歩きで一歩前進！' },
+            { id: 'short_3', name: 'ウサギ', icon: '🐰', cost: 150, desc: 'ピョンピョンと加速する成長！' },
+            { id: 'short_4', name: 'ユニコーン', icon: '🦄', cost: 300, desc: '華麗に駆け抜ける短期の星！' }
+        ];
+
+        const longPartners = [
+            { id: 'long_1', name: '赤ちゃん', icon: '👶', cost: 0, desc: '未来へ向かう最初の一歩。' },
+            { id: 'long_2', name: '小学生', icon: '🎒', cost: 100, desc: '好奇心旺盛に夢を広げる！' },
+            { id: 'long_3', name: '魔法使い', icon: '🧙‍♂️', cost: 250, desc: '未来を切り拓く知恵の力。' },
+            { id: 'long_4', name: 'スーパースター', icon: '👑', cost: 500, desc: '大いなる夢を叶えた究極の姿！' }
+        ];
+
+        const shopItems = [
+            { id: 'shop_1', name: 'レインボー背景', icon: '🌈', cost: 100, type: 'bg', value: 'linear-gradient(135deg, #fdf497 0%, #fd5949 35%, #d6249f 70%, #285AEB 100%)' },
+            { id: 'shop_2', name: 'サンセットシャイン', icon: '🌅', cost: 150, type: 'bg', value: 'linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%)' },
+            { id: 'shop_3', name: 'ギャラクシーナイト', icon: '🌌', cost: 200, type: 'bg', value: 'linear-gradient(135deg, #2b5876 0%, #4e4376 100%)' },
+            { id: 'shop_4', name: 'エメラルドフォレスト', icon: '🍀', cost: 150, type: 'bg', value: 'linear-gradient(135deg, #134e5e 0%, #71b280 100%)' }
+        ];
+
+        const feedStories = [
+            { id: 1, name: 'りこ', avatar: '👧', title: '英検2級合格する！', category: '進路・テスト', type: '短期目標' },
+            { id: 2, name: 'たっくん', avatar: '👦', title: 'プログラミングでアプリを作る', category: '学習・スキル', type: '長期目標' },
+            { id: 3, name: 'みお', avatar: '👩', title: '毎日朝6時に起きる', category: '生活・習慣', type: '短期目標' },
+            { id: 4, name: 'けんた', avatar: '🧑', title: '医学部合格に向けて毎日3h勉強', category: '進路・テスト', type: '長期目標' }
+        ];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadLocalStorage();
+            updateUI();
+            renderStoriesTray();
+            renderTaskList('all');
+            renderDex();
+            renderShop();
+
+            document.getElementById('storyTaskForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                addNewTask();
+            });
+        });
+
+        function saveLocalStorage() {
+            localStorage.setItem('mirainote_data', JSON.stringify(appData));
+        }
+
+        function loadLocalStorage() {
+            const saved = localStorage.getItem('mirainote_data');
+            if (saved) {
+                try {
+                    appData = JSON.parse(saved);
+                } catch(e) {}
+            }
+        }
+
+        function switchScreen(screenId, btnElement) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById('screen-' + screenId).classList.add('active');
+
+            if (btnElement) {
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                btnElement.classList.add('active');
+            } else {
+                const mapping = { 'home': 0, 'add': 1, 'list': 2, 'garden': 3, 'shop': 4 };
+                const navItems = document.querySelectorAll('.nav-item');
+                if (mapping[screenId] !== undefined) {
+                    navItems.forEach(n => n.classList.remove('active'));
+                    navItems[mapping[screenId]].classList.add('active');
+                }
+            }
+            const contentArea = document.querySelector('.app-content');
+            if (contentArea) contentArea.scrollTop = 0;
+        }
+
+        function updateUI() {
+            document.getElementById('headerShortPoints').textContent = appData.shortPoints;
+            document.getElementById('headerLongPoints').textContent = appData.longPoints;
+            document.getElementById('streakCount').textContent = appData.streak;
+
+            const remaining = appData.tasks.filter(t => !t.completed).length;
+            document.getElementById('remainingCount').textContent = remaining;
+
+            const sObj = shortPartners.find(p => p.id === appData.currentShortId) || shortPartners[0];
+            const lObj = longPartners.find(p => p.id === appData.currentLongId) || longPartners[0];
+
+            document.getElementById('homeShortIcon').textContent = sObj.icon;
+            document.getElementById('homeLongIcon').textContent = lObj.icon;
+
+            renderRecommendTask();
+        }
+
+        function renderRecommendTask() {
+            const uncompleted = appData.tasks.filter(t => !t.completed);
+            const container = document.getElementById('recommendContainer');
+            if (uncompleted.length === 0) {
+                container.innerHTML = `
+                    <div class="minimal-action-text" style="color: var(--text-secondary);">すべてのタスク完了！素晴らしい✨</div>
+                    <button class="btn" style="width: auto; padding: 6px 12px; font-size: 0.75rem;" onclick="switchScreen('add', null)">追加する</button>
+                `;
+            } else {
+                const target = uncompleted[0];
+                container.innerHTML = `
+                    <div class="minimal-action-text">📌 ${target.title}</div>
+                    <button class="btn" style="width: auto; padding: 6px 14px; font-size: 0.75rem;" onclick="completeTask(${target.id})">完了 ✨</button>
+                `;
+            }
+        }
+
+        function renderStoriesTray() {
+            const tray = document.getElementById('storiesTray');
+            tray.innerHTML = feedStories.map((item, idx) => `
+                <div class="story-ring-item" onclick="openFeedStory(${idx})">
+                    <div class="story-ring-outer">
+                        <div class="story-ring-inner">${item.avatar}</div>
+                    </div>
+                    <div class="story-ring-name">${item.name}</div>
+                </div>
+            `).join('');
+        }
+
+        let feedTimer = null;
+        function openFeedStory(index) {
+            const item = feedStories[index];
+            document.getElementById('feedUserAvatar').textContent = item.avatar;
+            document.getElementById('feedUserName').textContent = item.name;
+            document.getElementById('feedCategoryLabel').textContent = item.category;
+            document.getElementById('feedStoryTitle').textContent = item.title;
+            document.getElementById('feedStoryTypeBadge').textContent = item.type;
+
+            document.getElementById('feedStoryViewer').classList.add('active');
+
+            const fill = document.getElementById('feedBarFill');
+            fill.style.transition = 'none';
+            fill.style.transform = 'scaleX(0)';
+            setTimeout(() => {
+                fill.style.transition = 'transform 4s linear';
+                fill.style.transform = 'scaleX(1)';
+            }, 50);
+
+            if (feedTimer) clearTimeout(feedTimer);
+            feedTimer = setTimeout(() => { closeFeedStory(); }, 4000);
+        }
+
+        function closeFeedStory() {
+            if (feedTimer) clearTimeout(feedTimer);
+            document.getElementById('feedStoryViewer').classList.remove('active');
+        }
+
+        function sendReaction() {
+            confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
+            showCelebrationPopup('❤️ リアクションを送りました！');
+            closeFeedStory();
+        }
+
+        function addNewTask() {
+            const type = document.getElementById('modalTaskType').value;
+            const category = document.getElementById('modalTaskCategory').value;
+            const title = document.getElementById('modalTaskInput').value.trim();
+
+            if (!title) return;
+
+            const newTask = {
+                id: Date.now(),
+                title: title,
+                type: type,
+                completed: false,
+                category: category
+            };
+
+            appData.tasks.unshift(newTask);
+            saveLocalStorage();
+            updateUI();
+            renderTaskList('all');
+
+            document.getElementById('modalTaskInput').value = '';
+            switchScreen('home', document.querySelector('.nav-item'));
+
+            const popup = document.getElementById('addPopup');
+            popup.classList.add('active');
+            confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
+            setTimeout(() => { popup.classList.remove('active'); }, 2000);
+        }
+
+        let currentListTab = 'all';
+        function switchListTab(tab) {
+            currentListTab = tab;
+            document.querySelectorAll('.tab-container .tab-btn').forEach((btn, idx) => {
+                if ((tab === 'all' && idx === 0) || (tab === 'short' && idx === 1) || (tab === 'long' && idx === 2)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            renderTaskList(tab);
+        }
+
+        function renderTaskList(filter) {
+            const listEl = document.getElementById('taskList');
+            let filtered = appData.tasks;
+            if (filter === 'short') filtered = appData.tasks.filter(t => t.type === 'short');
+            if (filter === 'long') filtered = appData.tasks.filter(t => t.type === 'long');
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 30px; font-size: 0.8rem;">タスクがありません ✨</div>`;
+                return;
+            }
+
+            listEl.innerHTML = filtered.map(t => `
+                <li class="task-item ${t.completed ? 'completed' : ''}">
+                    <div class="task-info">
+                        <input type="checkbox" class="task-checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask(${t.id})">
+                        <div>
+                            <span class="${t.type === 'short' ? 'badge-short' : 'badge-long'}">${t.type === 'short' ? '短期' : '長期'}</span>
+                            <span style="font-size: 0.65rem; color: var(--text-secondary); margin-left: 4px;">${t.category}</span>
+                            <div class="task-text" style="margin-top: 4px;">${t.title}</div>
+                        </div>
+                    </div>
+                    <button class="delete-btn" onclick="deleteTask(${t.id})">🗑️</button>
+                </li>
+            `).join('');
+        }
+
+        function toggleTask(id) {
+            const task = appData.tasks.find(t => t.id === id);
+            if (!task) return;
+
+            task.completed = !task.completed;
+            if (task.completed) {
+                if (task.type === 'short') {
+                    appData.shortPoints += 15;
+                } else {
+                    appData.longPoints += 30;
+                    triggerCelebrationEffect('👑 長期目標達成！素晴らしい成果です！');
+                }
+            } else {
+                if (task.type === 'short') {
+                    appData.shortPoints = Math.max(0, appData.shortPoints - 15);
+                } else {
+                    appData.longPoints = Math.max(0, appData.longPoints - 30);
+                }
+            }
+
+            saveLocalStorage();
+            updateUI();
+            renderTaskList(currentListTab);
+            renderDex();
+        }
+
+        function completeTask(id) {
+            toggleTask(id);
+        }
+
+        function deleteTask(id) {
+            appData.tasks = appData.tasks.filter(t => t.id !== id);
+            saveLocalStorage();
+            updateUI();
+            renderTaskList(currentListTab);
+        }
+
+        function triggerCelebrationEffect(msg) {
+            const overlay = document.getElementById('flashOverlay');
+            overlay.classList.add('active');
+            setTimeout(() => overlay.classList.remove('active'), 500);
+
+            confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 } });
+            showCelebrationPopup(msg);
+        }
+
+        function showCelebrationPopup(msg) {
+            const pop = document.getElementById('celebrationPopup');
+            pop.textContent = msg;
+            pop.classList.add('active');
+            setTimeout(() => pop.classList.remove('active'), 2500);
+        }
+
+        function renderDex() {
+            const shortGrid = document.getElementById('shortDexGrid');
+            shortGrid.innerHTML = shortPartners.map(p => {
+                const unlocked = appData.unlockedShort.includes(p.id);
+                const selected = appData.currentShortId === p.id;
+                return `
+                    <div class="dex-item ${selected ? 'selected' : ''}" onclick="previewStory('short', '${p.id}')">
+                        <div class="dex-ring" style="${!unlocked ? 'opacity: 0.4; filter: grayscale(1);' : ''}">${p.icon}</div>
+                        <div style="font-weight: bold; margin-bottom: 2px;">${p.name}</div>
+                        ${unlocked ? `<div style="font-size: 0.6rem; color: var(--insta-pink);">\${selected ? '装着中' : '解放済'}</div>` : `<div class="locked-badge">\${p.cost}pt</div>`}
+                    </div>
+                `;
+            }).join('');
+
+            const longGrid = document.getElementById('longDexGrid');
+            longGrid.innerHTML = longPartners.map(p => {
+                const unlocked = appData.unlockedLong.includes(p.id);
+                const selected = appData.currentLongId === p.id;
+                return `
+                    <div class="dex-item ${selected ? 'selected' : ''}" onclick="previewStory('long', '${p.id}')">
+                        <div class="dex-ring" style="${!unlocked ? 'opacity: 0.4; filter: grayscale(1);' : ''}">${p.icon}</div>
+                        <div style="font-weight: bold; margin-bottom: 2px;">${p.name}</div>
+                        ${unlocked ? `<div style="font-size: 0.6rem; color: var(--insta-pink);">\${selected ? '装着中' : '解放済'}</div>` : `<div class="locked-badge">\${p.cost}pt</div>`}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        let previewTarget = { type: '', id: '' };
+        let storyTimer = null;
+
+        function previewStory(type, id) {
+            const list = type === 'short' ? shortPartners : longPartners;
+            const pObj = list.find(p => p.id === id);
+            if (!pObj) return;
+
+            const unlocked = type === 'short' ? appData.unlockedShort.includes(id) : appData.unlockedLong.includes(id);
+            previewTarget = { type, id };
+
+            document.getElementById('storyHeaderIcon').textContent = pObj.icon;
+            document.getElementById('storyTypeName').textContent = type === 'short' ? '短期パートナー' : '長期パートナー';
+            document.getElementById('storyPopupIcon').textContent = pObj.icon;
+            document.getElementById('storyPopupName').textContent = pObj.name;
+
+            const confirmBtn = document.getElementById('storyConfirmBtn');
+
+            if (unlocked) {
+                document.getElementById('storyPopupDesc').textContent = pObj.desc + ' (タップしてきせかえ)';
+                confirmBtn.textContent = 'この姿にする ✨';
+                confirmBtn.onclick = confirmSelectStory;
+            } else {
+                const myPts = type === 'short' ? appData.shortPoints : appData.longPoints;
+                document.getElementById('storyPopupDesc').textContent = `${pObj.desc} (必要ポイント: ${pObj.cost}pt / 所有: ${myPts}pt)`;
+                confirmBtn.textContent = myPts >= pObj.cost ? 'ポイントで解放する 🔓' : 'ポイントが足りません';
+                confirmBtn.onclick = () => unlockPartner(type, id, pObj.cost);
+            }
+
+            const viewer = document.getElementById('storyViewer');
+            viewer.classList.add('active');
+
+            const fill = document.getElementById('storyBarFill');
+            fill.style.transition = 'none';
+            fill.style.transform = 'scaleX(0)';
+            setTimeout(() => {
+                fill.style.transition = 'transform 5s linear';
+                fill.style.transform = 'scaleX(1)';
+            }, 50);
+
+            if (storyTimer) clearTimeout(storyTimer);
+            storyTimer = setTimeout(() => { closeStory(); }, 5000);
+        }
+
+        function closeStory() {
+            if (storyTimer) clearTimeout(storyTimer);
+            document.getElementById('storyViewer').classList.remove('active');
+        }
+
+        function confirmSelectStory() {
+            if (previewTarget.type === 'short') {
+                appData.currentShortId = previewTarget.id;
+            } else {
+                appData.currentLongId = previewTarget.id;
+            }
+            saveLocalStorage();
+            updateUI();
+            renderDex();
+            closeStory();
+            showCelebrationPopup('✨ パートナーをきせかえました！');
+        }
+
+        function unlockPartner(type, id, cost) {
+            const myPts = type === 'short' ? appData.shortPoints : appData.longPoints;
+            if (myPts < cost) {
+                showCelebrationPopup('⚠️ ポイントが不足しています');
+                return;
+            }
+
+            if (type === 'short') {
+                appData.shortPoints -= cost;
+                appData.unlockedShort.push(id);
+                appData.currentShortId = id;
+            } else {
+                appData.longPoints -= cost;
+                appData.unlockedLong.push(id);
+                appData.currentLongId = id;
+            }
+
+            saveLocalStorage();
+            updateUI();
+            renderDex();
+            closeStory();
+            triggerCelebrationEffect('🎉 新しいパートナーを解放しました！');
+        }
+
+        function renderShop() {
+            const grid = document.getElementById('shopGrid');
+            grid.innerHTML = shopItems.map(item => {
+                const unlocked = appData.unlockedShop.includes(item.id);
+                return `
+                    <div class="shop-item" onclick="openShopModal('${item.id}')">
+                        <div class="shop-item-preview" style="background: ${item.value}">${item.icon}</div>
+                        <div style="font-size: 0.75rem; font-weight: bold; margin-bottom: 2px;">${item.name}</div>
+                        <div style="font-size: 0.65rem; color: ${unlocked ? 'var(--insta-pink)' : 'var(--text-secondary)'}; font-weight: 600;">
+                            ${unlocked ? '解放済み' : item.cost + 'pt'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        let selectedShopItemId = null;
+        function openShopModal(id) {
+            // 背景アイテム等の拡張用
+        }
+    </script>
+</body>
+</html>
