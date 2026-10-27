@@ -2,22 +2,10 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>未来ノート - ミライを育てる目標管理アプリ</title>
-    
-    <!-- PWA 用設定 -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#ffffff">
-    
-    <!-- iOS (Safari) 用 PWA 設定 -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="未来ノート">
-    <link rel="apple-touch-icon" href="icon.png">
-
     <!-- 紙吹雪エフェクト用ライブラリ -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-    
     <style>
         :root {
             --app-bg: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -56,7 +44,6 @@
             width: 100%;
             max-width: 430px;
             height: 100vh;
-            height: 100dvh;
             max-height: 932px;
             background: #fafafa;
             display: flex;
@@ -77,8 +64,7 @@
         /* ヘッダー */
         .app-header {
             background: #ffffff;
-            padding: 12px 16px;
-            padding-top: calc(12px + env(safe-area-inset-top));
+            padding: 10px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -88,26 +74,27 @@
 
         .app-logo {
             font-weight: 800;
-            font-size: 1.1rem;
+            font-size: 1rem;
             background: var(--insta-gradient);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
+            cursor: pointer;
         }
 
         .header-points {
             display: flex;
-            gap: 10px;
-            font-size: 0.75rem;
+            gap: 6px;
+            font-size: 0.7rem;
             font-weight: bold;
         }
 
         .point-badge {
             background: #fff0f3;
             color: #d6249f;
-            padding: 4px 8px;
+            padding: 3px 6px;
             border-radius: 20px;
             border: 1px solid rgba(214, 36, 159, 0.2);
         }
@@ -123,7 +110,7 @@
             flex: 1;
             overflow-y: auto;
             position: relative;
-            padding-bottom: calc(70px + env(safe-area-inset-bottom));
+            padding-bottom: 70px;
         }
 
         .screen {
@@ -141,7 +128,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* ストーリー風ハイライト・フィードトレイ */
+        /* ストーリー風トレイ */
         .stories-container {
             display: flex;
             gap: 12px;
@@ -241,7 +228,7 @@
             color: var(--text-secondary);
         }
 
-        /* ミニマリストアクションボタン */
+        /* ミニマリストアクションボックス */
         .minimal-action-box {
             background: #fff;
             border: 1px solid var(--border-color);
@@ -305,7 +292,7 @@
             transform: scale(0.98);
         }
 
-        /* 目標一覧タブ・リスト */
+        /* タブ・リスト */
         .tab-container {
             display: flex;
             border-bottom: 1px solid var(--border-color);
@@ -338,11 +325,11 @@
             background: var(--text-main);
         }
 
-        .task-list {
+        .task-list, .friend-list, .group-list {
             list-style: none;
         }
 
-        .task-item {
+        .task-item, .friend-item, .group-item {
             background: #fff;
             border: 1px solid var(--border-color);
             border-radius: 12px;
@@ -484,8 +471,7 @@
             bottom: 0;
             left: 0;
             width: 100%;
-            height: calc(60px + env(safe-area-inset-bottom));
-            padding-bottom: env(safe-area-inset-bottom);
+            height: 60px;
             background: #ffffff;
             border-top: 1px solid var(--border-color);
             display: flex;
@@ -527,7 +513,7 @@
             display: none;
             flex-direction: column;
             justify-content: space-between;
-            padding: calc(20px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));
+            padding: 20px 16px;
             color: #fff;
         }
 
@@ -602,7 +588,6 @@
             transform: translate(-50%, -50%) scale(1);
         }
 
-        /* 画面フラッシュエフェクト */
         .flash-overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -619,19 +604,19 @@
 </head>
 <body>
 
-    <div class="app-container">
+    <div class="app-container" id="appContainer">
         <!-- 画面フラッシュ & ポップアップ -->
         <div class="flash-overlay" id="flashOverlay"></div>
         <div class="celebration-popup" id="celebrationPopup">✨ 達成おめでとうございます！</div>
 
         <!-- ヘッダー -->
         <header class="app-header">
-            <div class="app-logo">
-                <span>🌱</span> 未来ノート
+            <div class="app-logo" onclick="switchScreen('profile', null)" title="プロフィール変更">
+                <span>🌱</span> <span id="headerUsername">マイアカウント</span> ✏️
             </div>
             <div class="header-points">
-                <div class="point-badge" onclick="switchScreen('shop', null)" style="cursor:pointer;" title="短期ショップへ">短期: <span id="headerShortPoints">120</span>pt</div>
-                <div class="point-badge long" onclick="switchScreen('shop', null)" style="cursor:pointer;" title="長期ショップへ">長期: <span id="headerLongPoints">80</span>pt</div>
+                <div class="point-badge" onclick="switchScreen('shop', null)" style="cursor:pointer;" title="短期ショップへ">短: <span id="headerShortPoints">150</span>pt</div>
+                <div class="point-badge long" onclick="switchScreen('shop', null)" style="cursor:pointer;" title="長期ショップへ">長: <span id="headerLongPoints">80</span>pt</div>
             </div>
         </header>
 
@@ -640,8 +625,10 @@
 
             <!-- 1. ホーム画面 -->
             <div id="screen-home" class="screen active">
+                <!-- フレンドストーリーリング風トレイ -->
                 <div class="stories-container" id="storiesTray"></div>
 
+                <!-- パートナーカード (短期) -->
                 <div class="card">
                     <div class="partner-display">
                         <div class="partner-avatar-large" id="homeShortIcon">🐥</div>
@@ -655,6 +642,7 @@
                     <div id="recommendContainer"></div>
                 </div>
 
+                <!-- 長期パートナーウィジェット -->
                 <div class="card" style="background: linear-gradient(135deg, #f8f9ff 0%, #eef2ff 100%);">
                     <div class="partner-display">
                         <div class="partner-avatar-large" id="homeLongIcon" style="border-color: #285AEB;">👶</div>
@@ -677,7 +665,7 @@
                             <span id="feedUserAvatar" style="font-size: 1.2rem;">👧</span>
                             <span id="feedUserName">りこ</span>
                         </div>
-                        <span style="font-size: 0.75rem; opacity: 0.7;" onclick="closeFeedStory()">✕ 閉じる</span>
+                        <span style="font-size: 0.75rem; opacity: 0.7; cursor:pointer;" onclick="closeFeedStory()">✕ 閉じる</span>
                     </div>
                 </div>
                 <div class="story-content-box">
@@ -690,7 +678,7 @@
                 </div>
             </div>
 
-            <!-- ストーリー風図鑑プレビューモーダル -->
+            <!-- 図鑑プレビューモーダル -->
             <div class="story-viewer" id="storyViewer">
                 <div>
                     <div class="story-progress-bar"><div class="story-progress-fill" id="storyBarFill"></div></div>
@@ -699,7 +687,7 @@
                             <span id="storyHeaderIcon" style="font-size: 1.2rem;">🥚</span>
                             <span id="storyTypeName">短期パートナー</span>
                         </div>
-                        <span style="font-size: 0.75rem; opacity: 0.7;" onclick="closeStory()">✕ 閉じる</span>
+                        <span style="font-size: 0.75rem; opacity: 0.7; cursor:pointer;" onclick="closeStory()">✕ 閉じる</span>
                     </div>
                 </div>
                 <div class="story-content-box">
@@ -711,7 +699,7 @@
                     <button class="btn" id="storyConfirmBtn" onclick="confirmSelectStory()">この姿にする ✨</button>
                 </div>
             </div>
-
+           
             <!-- 2. 追加画面 -->
             <div id="screen-add" class="screen">
                 <div class="card">
@@ -746,15 +734,78 @@
 
             <div class="celebration-popup" id="addPopup" style="top: 50%;">目標を追加しました！✨</div>
 
-            <!-- 3. 一覧画面 -->
+            <!-- プロフィール・ユーザー設定画面 -->
+            <div id="screen-profile" class="screen">
+                <div class="card">
+                    <h2>👤 プロフィール・ユーザー設定</h2>
+                    <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 16px;">あなたのユーザー名やアイコンを設定しよう！</p>
+                    <form id="profileForm">
+                        <div class="form-group">
+                            <label for="usernameInput">ユーザーネーム</label>
+                            <input type="text" id="usernameInput" class="form-control" placeholder="例: 勉強太郎" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="avatarSelect">マイアイコン</label>
+                            <select id="avatarSelect" class="form-control">
+                                <option value="🧑‍🎓">🧑‍🎓 学生</option>
+                                <option value="🧑‍💻">🧑‍💻 ラーナー</option>
+                                <option value="🌟">🌟 スター</option>
+                                <option value="🔥">🔥 ファイター</option>
+                                <option value="🍀">🍀 クローバー</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn">プロフィールを保存する ✨</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 3. 一覧・フレンド・グループ画面 -->
             <div id="screen-list" class="screen">
                 <div class="tab-container">
-                    <button class="tab-btn active" onclick="switchListTab('all')">すべて</button>
-                    <button class="tab-btn" onclick="switchListTab('short')">短期目標</button>
-                    <button class="tab-btn" onclick="switchListTab('long')">長期目標</button>
+                    <button class="tab-btn active" onclick="switchListTab('all')">目標</button>
+                    <button class="tab-btn" onclick="switchListTab('friends')">フレンド</button>
+                    <button class="tab-btn" onclick="switchListTab('groups')">学校・塾</button>
                 </div>
 
-                <ul class="task-list" id="taskList"></ul>
+                <!-- 目標リストコンテナ -->
+                <div id="tabContent-tasks">
+                    <div style="display:flex; gap:8px; margin-bottom:10px;">
+                        <button class="btn" style="padding:6px; font-size:0.7rem; background:#eee; color:#333;" onclick="filterTasks('all')">すべて</button>
+                        <button class="btn" style="padding:6px; font-size:0.7rem; background:#fff0f3; color:var(--insta-pink);" onclick="filterTasks('short')">短期</button>
+                        <button class="btn" style="padding:6px; font-size:0.7rem; background:#eef2ff; color:#285AEB;" onclick="filterTasks('long')">長期</button>
+                    </div>
+                    <ul class="task-list" id="taskList"></ul>
+                </div>
+
+                <!-- フレンドコンテナ -->
+                <div id="tabContent-friends" style="display: none;">
+                    <div class="card" style="margin-bottom:12px;">
+                        <h3 style="font-size:0.85rem; margin-bottom:8px;">👥 フレンドを追加</h3>
+                        <div class="form-group" style="margin-bottom:8px;">
+                            <input type="text" id="friendIdInput" class="form-control" placeholder="フレンドのユーザー名を入力">
+                        </div>
+                        <button class="btn" style="padding:8px;" onclick="addFriend()">フレンドを追加する 🤝</button>
+                    </div>
+                    <h3 style="font-size:0.8rem; font-weight:bold; margin-bottom:8px;">つながっているフレンド</h3>
+                    <ul class="friend-list" id="friendList"></ul>
+                </div>
+
+                <!-- 学校・塾グループコンテナ -->
+                <div id="tabContent-groups" style="display: none;">
+                    <div class="card" style="margin-bottom:12px;">
+                        <h3 style="font-size:0.85rem; margin-bottom:8px;">🏫 学校・塾グループを作成・参加</h3>
+                        <div class="form-group" style="margin-bottom:8px;">
+                            <input type="text" id="groupNameInput" class="form-control" placeholder="グループ名 (例: 〇〇高校 2年3組)">
+                        </div>
+                        <button class="btn" style="padding:8px; margin-bottom:8px;" onclick="createGroup()">新しいグループを作成 🚀</button>
+                        <div class="form-group" style="margin-bottom:8px; margin-top:12px;">
+                            <input type="text" id="groupCodeInput" class="form-control" placeholder="共有コードを入力して参加">
+                        </div>
+                        <button class="btn" style="padding:8px; background: #4e4376;" onclick="joinGroup()">コードで参加する 🔗</button>
+                    </div>
+                    <h3 style="font-size:0.8rem; font-weight:bold; margin-bottom:8px;">参加中のグループ</h3>
+                    <ul class="group-list" id="groupList"></ul>
+                </div>
             </div>
 
             <!-- 4. 成長図鑑画面 -->
@@ -795,7 +846,7 @@
             </button>
             <button class="nav-item" onclick="switchScreen('list', this)">
                 <span class="icon">📝</span>
-                <span>目標一覧</span>
+                <span>一覧・共有</span>
             </button>
             <button class="nav-item" onclick="switchScreen('garden', this)">
                 <span class="icon">📖</span>
@@ -809,17 +860,9 @@
     </div>
 
     <script>
-        // Service Workerの登録
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => console.log('Service Worker 登録成功:', reg.scope))
-                    .catch(err => console.error('Service Worker 登録失敗:', err));
-            });
-        }
-
-        // データ構造
         let appData = {
+            username: 'ゲストさん',
+            avatar: '🧑‍🎓',
             shortPoints: 150,
             longPoints: 80,
             streak: 5,
@@ -828,8 +871,15 @@
             tasks: [
                 { id: 1, title: '英単語マスター50個', type: 'short', completed: false, category: '学習・スキル' },
                 { id: 2, title: '数学の復習プリント', type: 'short', completed: true, category: '進路・テスト' },
-                { id: 3, title: '志望校のオープンキャンパス参加', type: 'long', completed: false, category: '進路・テスト' },
-                { id: 4, title: '毎日23時に寝る生活習慣', type: 'short', completed: false, category: '生活・習慣' }
+                { id: 3, title: '志望校のオープンキャンパス参加', type: 'long', completed: false, category: '進路・テスト' }
+            ],
+            friends: [
+                { id: 'f1', name: 'りこ', avatar: '👧', status: '英検2級合格する！', category: '進路・テスト', type: '短期目標' },
+                { id: 'f2', name: 'たっくん', avatar: '👦', status: 'プログラミングでアプリを作る', category: '学習・スキル', type: '長期目標' }
+            ],
+            groups: [
+                { id: 'g1', name: '〇〇高校 2年特進クラス', code: 'SCH2026', members: 12, recentActivity: 'りこさんが短期目標を達成しました！' },
+                { id: 'g2', name: '志望校合格メイト（塾）', code: 'JUKU99', members: 5, recentActivity: 'みんなで毎日勉強中 🔥' }
             ],
             unlockedShort: ['short_1', 'short_2'],
             unlockedLong: ['long_1'],
@@ -857,18 +907,13 @@
             { id: 'shop_4', name: 'エメラルドフォレスト', icon: '🍀', cost: 150, type: 'bg', value: 'linear-gradient(135deg, #134e5e 0%, #71b280 100%)' }
         ];
 
-        const feedStories = [
-            { id: 1, name: 'りこ', avatar: '👧', title: '英検2級合格する！', category: '進路・テスト', type: '短期目標' },
-            { id: 2, name: 'たっくん', avatar: '👦', title: 'プログラミングでアプリを作る', category: '学習・スキル', type: '長期目標' },
-            { id: 3, name: 'みお', avatar: '👩', title: '毎日朝6時に起きる', category: '生活・習慣', type: '短期目標' },
-            { id: 4, name: 'けんた', avatar: '🧑', title: '医学部合格に向けて毎日3h勉強', category: '進路・テスト', type: '長期目標' }
-        ];
-
         window.addEventListener('DOMContentLoaded', () => {
             loadLocalStorage();
             updateUI();
             renderStoriesTray();
             renderTaskList('all');
+            renderFriendList();
+            renderGroupList();
             renderDex();
             renderShop();
 
@@ -876,19 +921,39 @@
                 e.preventDefault();
                 addNewTask();
             });
+
+            document.getElementById('profileForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                saveProfile();
+            });
         });
 
         function saveLocalStorage() {
-            localStorage.setItem('mirainote_data', JSON.stringify(appData));
+            localStorage.setItem('mirainote_online_user_data', JSON.stringify(appData));
         }
 
         function loadLocalStorage() {
-            const saved = localStorage.getItem('mirainote_data');
+            const saved = localStorage.getItem('mirainote_online_user_data');
             if (saved) {
                 try {
                     appData = JSON.parse(saved);
                 } catch(e) {}
             }
+            document.getElementById('usernameInput').value = appData.username || '';
+            document.getElementById('avatarSelect').value = appData.avatar || '🧑‍🎓';
+        }
+
+        function saveProfile() {
+            const name = document.getElementById('usernameInput').value.trim();
+            const av = document.getElementById('avatarSelect').value;
+            if (!name) return;
+
+            appData.username = name;
+            appData.avatar = av;
+            saveLocalStorage();
+            updateUI();
+            switchScreen('home', document.querySelector('.nav-item'));
+            showCelebrationPopup('👤 プロフィールを更新しました！');
         }
 
         function switchScreen(screenId, btnElement) {
@@ -911,6 +976,7 @@
         }
 
         function updateUI() {
+            document.getElementById('headerUsername').textContent = appData.username;
             document.getElementById('headerShortPoints').textContent = appData.shortPoints;
             document.getElementById('headerLongPoints').textContent = appData.longPoints;
             document.getElementById('streakCount').textContent = appData.streak;
@@ -922,9 +988,12 @@
             const lObj = longPartners.find(p => p.id === appData.currentLongId) || longPartners[0];
 
             document.getElementById('homeShortIcon').textContent = sObj.icon;
+            document.getElementById('homeShortName').textContent = sObj.name;
             document.getElementById('homeLongIcon').textContent = lObj.icon;
+            document.getElementById('homeLongName').textContent = lObj.name;
 
             renderRecommendTask();
+            renderStoriesTray();
         }
 
         function renderRecommendTask() {
@@ -933,20 +1002,22 @@
             if (uncompleted.length === 0) {
                 container.innerHTML = `
                     <div class="minimal-action-text" style="color: var(--text-secondary);">すべてのタスク完了！素晴らしい✨</div>
-                    <button class="btn" style="width: auto; padding: 6px 12px; font-size: 0.75rem;" onclick="switchScreen('add', null)">追加する</button>
+                    <button class="btn" style="width: auto; padding: 6px 12px; font-size: 0.75rem; margin-top:8px;" onclick="switchScreen('add', null)">追加する</button>
                 `;
             } else {
                 const target = uncompleted[0];
                 container.innerHTML = `
-                    <div class="minimal-action-text">📌 ${target.title}</div>
-                    <button class="btn" style="width: auto; padding: 6px 14px; font-size: 0.75rem;" onclick="completeTask(${target.id})">完了 ✨</button>
+                    <div class="minimal-action-box">
+                        <div class="minimal-action-text">📌 ${target.title}</div>
+                        <button class="btn" style="width: auto; padding: 6px 14px; font-size: 0.75rem;" onclick="completeTask(${target.id})">完了 ✨</button>
+                    </div>
                 `;
             }
         }
 
         function renderStoriesTray() {
             const tray = document.getElementById('storiesTray');
-            tray.innerHTML = feedStories.map((item, idx) => `
+            tray.innerHTML = appData.friends.map((item, idx) => `
                 <div class="story-ring-item" onclick="openFeedStory(${idx})">
                     <div class="story-ring-outer">
                         <div class="story-ring-inner">${item.avatar}</div>
@@ -958,11 +1029,11 @@
 
         let feedTimer = null;
         function openFeedStory(index) {
-            const item = feedStories[index];
+            const item = appData.friends[index];
             document.getElementById('feedUserAvatar').textContent = item.avatar;
             document.getElementById('feedUserName').textContent = item.name;
             document.getElementById('feedCategoryLabel').textContent = item.category;
-            document.getElementById('feedStoryTitle').textContent = item.title;
+            document.getElementById('feedStoryTitle').textContent = item.status;
             document.getElementById('feedStoryTypeBadge').textContent = item.type;
 
             document.getElementById('feedStoryViewer').classList.add('active');
@@ -986,50 +1057,29 @@
 
         function sendReaction() {
             confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
-            showCelebrationPopup('❤️ リアクションを送りました！');
+            showCelebrationPopup('❤️ フレンドに応援を送りました！');
             closeFeedStory();
         }
 
-        function addNewTask() {
-            const type = document.getElementById('modalTaskType').value;
-            const category = document.getElementById('modalTaskCategory').value;
-            const title = document.getElementById('modalTaskInput').value.trim();
-
-            if (!title) return;
-
-            const newTask = {
-                id: Date.now(),
-                title: title,
-                type: type,
-                completed: false,
-                category: category
-            };
-
-            appData.tasks.unshift(newTask);
-            saveLocalStorage();
-            updateUI();
-            renderTaskList('all');
-
-            document.getElementById('modalTaskInput').value = '';
-            switchScreen('home', document.querySelector('.nav-item'));
-
-            const popup = document.getElementById('addPopup');
-            popup.classList.add('active');
-            confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
-            setTimeout(() => { popup.classList.remove('active'); }, 2000);
-        }
-
-        let currentListTab = 'all';
         function switchListTab(tab) {
-            currentListTab = tab;
-            document.querySelectorAll('.tab-container .tab-btn').forEach((btn, idx) => {
-                if ((tab === 'all' && idx === 0) || (tab === 'short' && idx === 1) || (tab === 'long' && idx === 2)) {
+            const btns = document.querySelectorAll('#screen-list .tab-btn');
+            btns.forEach((btn, idx) => {
+                if ((tab === 'all' && idx === 0) || (tab === 'friends' && idx === 1) || (tab === 'groups' && idx === 2)) {
                     btn.classList.add('active');
                 } else {
                     btn.classList.remove('active');
                 }
             });
-            renderTaskList(tab);
+
+            document.getElementById('tabContent-tasks').style.display = tab === 'all' ? 'block' : 'none';
+            document.getElementById('tabContent-friends').style.display = tab === 'friends' ? 'block' : 'none';
+            document.getElementById('tabContent-groups').style.display = tab === 'groups' ? 'block' : 'none';
+        }
+
+        let currentTaskFilter = 'all';
+        function filterTasks(filter) {
+            currentTaskFilter = filter;
+            renderTaskList(filter);
         }
 
         function renderTaskList(filter) {
@@ -1058,6 +1108,131 @@
             `).join('');
         }
 
+        function renderFriendList() {
+            const list = document.getElementById('friendList');
+            list.innerHTML = appData.friends.map(f => `
+                <li class="friend-item">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.5rem;">${f.avatar}</span>
+                        <div>
+                            <div style="font-weight:bold; font-size:0.85rem;">${f.name}</div>
+                            <div style="font-size:0.7rem; color:var(--text-secondary);">目標: ${f.status}</div>
+                        </div>
+                    </div>
+                    <button class="btn" style="width:auto; padding:4px 10px; font-size:0.7rem;" onclick="showCelebrationPopup('${f.name}さんに応援を送りました！❤️')">応援 ❤️</button>
+                </li>
+            `).join('');
+        }
+
+        function addFriend() {
+            const input = document.getElementById('friendIdInput');
+            const val = input.value.trim();
+            if (!val) return;
+
+            const newFriend = {
+                id: 'f_' + Date.now(),
+                name: val,
+                avatar: '🧑‍🎓',
+                status: '新しい目標に向かって勉強中！',
+                category: '学習・スキル',
+                type: '短期目標'
+            };
+
+            appData.friends.push(newFriend);
+            saveLocalStorage();
+            renderFriendList();
+            renderStoriesTray();
+            input.value = '';
+            showCelebrationPopup('🤝 フレンドを追加しました！');
+        }
+
+        function renderGroupList() {
+            const list = document.getElementById('groupList');
+            list.innerHTML = appData.groups.map(g => `
+                <li class="group-item" style="flex-direction:column; align-items:flex-start; gap:6px;">
+                    <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                        <span style="font-weight:bold; font-size:0.85rem;">🏫 ${g.name}</span>
+                        <span style="font-size:0.65rem; background:#eef2ff; color:#285AEB; padding:2px 6px; border-radius:4px;">コード: ${g.code}</span>
+                    </div>
+                    <div style="font-size:0.75rem; color:var(--text-secondary);">メンバー: ${g.members}人 / 最近の動き: ${g.recentActivity}</div>
+                </li>
+            `).join('');
+        }
+
+        function createGroup() {
+            const input = document.getElementById('groupNameInput');
+            const val = input.value.trim();
+            if (!val) return;
+
+            const randomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const newGroup = {
+                id: 'g_' + Date.now(),
+                name: val,
+                code: randomCode,
+                members: 1,
+                recentActivity: 'グループが作成されました 🎉'
+            };
+
+            appData.groups.push(newGroup);
+            saveLocalStorage();
+            renderGroupList();
+            input.value = '';
+            showCelebrationPopup(`🎉 グループを作成しました！(共有コード: ${randomCode})`);
+        }
+
+        function joinGroup() {
+            const input = document.getElementById('groupCodeInput');
+            const val = input.value.trim().toUpperCase();
+            if (!val) return;
+
+            const target = appData.groups.find(g => g.code === val);
+            if (target) {
+                showCelebrationPopup(`✨ すでに参加しているグループです: ${target.name}`);
+            } else {
+                const joinedGroup = {
+                    id: 'g_' + Date.now(),
+                    name: '参加グループ (' + val + ')',
+                    code: val,
+                    members: 4,
+                    recentActivity: '新メンバーが参加しました！'
+                };
+                appData.groups.push(joinedGroup);
+                saveLocalStorage();
+                renderGroupList();
+                showCelebrationPopup('🔗 学校・塾のグループに参加しました！');
+            }
+            input.value = '';
+        }
+
+        function addNewTask() {
+            const type = document.getElementById('modalTaskType').value;
+            const category = document.getElementById('modalTaskCategory').value;
+            const title = document.getElementById('modalTaskInput').value.trim();
+
+            if (!title) return;
+
+            const newTask = {
+                id: Date.now(),
+                title: title,
+                type: type,
+                completed: false,
+                category: category
+            };
+
+            appData.tasks.unshift(newTask);
+            saveLocalStorage();
+            updateUI();
+            renderTaskList(currentTaskFilter);
+
+            document.getElementById('modalTaskInput').value = '';
+            switchScreen('home', document.querySelector('.nav-item'));
+
+            const popup = document.getElementById('addPopup');
+            popup.classList.add('active');
+            confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
+            setTimeout(() => { popup.classList.remove('active'); }, 2000);
+        }
+
         function toggleTask(id) {
             const task = appData.tasks.find(t => t.id === id);
             if (!task) return;
@@ -1080,7 +1255,7 @@
 
             saveLocalStorage();
             updateUI();
-            renderTaskList(currentListTab);
+            renderTaskList(currentTaskFilter);
             renderDex();
         }
 
@@ -1092,7 +1267,7 @@
             appData.tasks = appData.tasks.filter(t => t.id !== id);
             saveLocalStorage();
             updateUI();
-            renderTaskList(currentListTab);
+            renderTaskList(currentTaskFilter);
         }
 
         function triggerCelebrationEffect(msg) {
@@ -1120,7 +1295,7 @@
                     <div class="dex-item ${selected ? 'selected' : ''}" onclick="previewStory('short', '${p.id}')">
                         <div class="dex-ring" style="${!unlocked ? 'opacity: 0.4; filter: grayscale(1);' : ''}">${p.icon}</div>
                         <div style="font-weight: bold; margin-bottom: 2px;">${p.name}</div>
-                        ${unlocked ? `<div style="font-size: 0.6rem; color: var(--insta-pink);">\${selected ? '装着中' : '解放済'}</div>` : `<div class="locked-badge">\${p.cost}pt</div>`}
+                        ${unlocked ? `<div style="font-size: 0.6rem; color: var(--insta-pink);">${selected ? '装着中' : '解放済'}</div>` : `<div class="locked-badge">${p.cost}pt</div>`}
                     </div>
                 `;
             }).join('');
@@ -1133,7 +1308,7 @@
                     <div class="dex-item ${selected ? 'selected' : ''}" onclick="previewStory('long', '${p.id}')">
                         <div class="dex-ring" style="${!unlocked ? 'opacity: 0.4; filter: grayscale(1);' : ''}">${p.icon}</div>
                         <div style="font-weight: bold; margin-bottom: 2px;">${p.name}</div>
-                        ${unlocked ? `<div style="font-size: 0.6rem; color: var(--insta-pink);">\${selected ? '装着中' : '解放済'}</div>` : `<div class="locked-badge">\${p.cost}pt</div>`}
+                        ${unlocked ? `<div style="font-size: 0.6rem; color: var(--insta-pink);">${selected ? '装着中' : '解放済'}</div>` : `<div class="locked-badge">${p.cost}pt</div>`}
                     </div>
                 `;
             }).join('');
@@ -1163,7 +1338,7 @@
                 confirmBtn.onclick = confirmSelectStory;
             } else {
                 const myPts = type === 'short' ? appData.shortPoints : appData.longPoints;
-                document.getElementById('storyPopupDesc').textContent = `${pObj.desc} (必要ポイント: ${pObj.cost}pt / 所有: ${myPts}pt)`;
+                document.getElementById('storyPopupDesc').textContent = `${pObj.desc} (必要: ${pObj.cost}pt / 所持: ${myPts}pt)`;
                 confirmBtn.textContent = myPts >= pObj.cost ? 'ポイントで解放する 🔓' : 'ポイントが足りません';
                 confirmBtn.onclick = () => unlockPartner(type, id, pObj.cost);
             }
@@ -1241,9 +1416,28 @@
             }).join('');
         }
 
-        let selectedShopItemId = null;
         function openShopModal(id) {
-            // 背景アイテム等の拡張用
+            const item = shopItems.find(i => i.id === id);
+            if (!item) return;
+            const unlocked = appData.unlockedShop.includes(id);
+
+            if (unlocked) {
+                if (item.type === 'bg') {
+                    document.getElementById('appContainer').style.background = item.value;
+                    showCelebrationPopup('🌈 背景をきせかえました！');
+                }
+            } else {
+                if (appData.shortPoints >= item.cost) {
+                    appData.shortPoints -= item.cost;
+                    appData.unlockedShop.push(id);
+                    saveLocalStorage();
+                    updateUI();
+                    renderShop();
+                    triggerCelebrationEffect('🛍️ ショップアイテムを購入しました！');
+                } else {
+                    showCelebrationPopup('⚠️ ポイントが不足しています');
+                }
+            }
         }
     </script>
 </body>
